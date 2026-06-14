@@ -1,57 +1,39 @@
-import requests, re, os
+import requests, re
 
 TOKEN = "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"
 GIST_ID = "719873c53714a5f38f60348e7fecc814"
-FILENAME = "mi_lista_final.m3u8"
 
 FUENTES = {
-    "TDT": "https://www.tdtchannels.com/lists/tv.m3u8",
-    "ES": "https://iptv-org.github.io/iptv/countries/es.m3u",
-    "PlutoES": "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/pluto_es.m3u"
+    "España iptv-org": "https://iptv-org.github.io/iptv/countries/es.m3u",
+    "España TDT": "https://raw.githubusercontent.com/LaQuay/TDTChannels/master/m3u/TDTChannels.m3u8",
+    "USA": "https://iptv-org.github.io/iptv/countries/us.m3u",
+    "UK": "https://iptv-org.github.io/iptv/countries/uk.m3u",
+    "Deportes": "https://raw.githubusercontent.com/iptv-org/iptv/master/categories/sports.m3u",
+    "Cine": "https://raw.githubusercontent.com/iptv-org/iptv/master/categories/movies.m3u",
 }
 
-ORDEN = ["Deportes","Cine","Series","VOD","Música","Documentales"]
+def descargar(url):
+    try:
+        r = requests.get(url, timeout=20)
+        return r.text if r.status_code == 200 else ""
+    except: return ""
 
-def clasificar(nombre, grupo=""):
-    n = (nombre + " " + grupo).lower()
-    if any(k in n for k in ['deporte','laliga','dazn','eurosport','golf','nba','futbol','sport','f1','motogp']): return "Deportes"
-    if any(k in n for k in ['cine','pelicula','film','movie','tcm','somos']): return "Cine"
-    if any(k in n for k in ['serie','fox','axn','amc','comedy','syfy']): return "Series"
-    if any(k in n for k in ['pluto','vod','plex']): return "VOD"
-    if any(k in n for k in ['music','mtv','hits','kiss','rock','los 40']): return "Música"
-    if any(k in n for k in ['documental','historia','discovery','nat geo','odisea']): return "Documentales"
-    return None
+def es_espanol(b):
+    b=b.lower()
+    return any(x in b for x in ['tvg-country="es"','group-title="es','spain','españa','|es|'])
 
-canales = []
-for fuente, url in FUENTES.items():
-    r = requests.get(url, timeout=25, headers={"User-Agent":"Mozilla/5.0"})
-    lineas = r.text.splitlines()
-    for i,l in enumerate(lineas):
-        if l.startswith("#EXTINF"):
-            nombre = l.split(",")[-1].strip()
-            if re.search('[\u0400-\u04FF\u4e00-\u9fff\u0600-\u06FF\u3040-\u30FF]', nombre): continue
-            g = re.search('group-title="([^"]+)"', l)
-            grupo = g.group(1) if g else ""
-            url_c = lineas[i+1] if i+1 < len(lineas) else ""
-            if url_c.startswith("http"):
-                cat = clasificar(nombre, grupo)
-                if cat:
-                    # mantiene logo y todo, solo cambia el grupo
-                    if 'group-title=' in l:
-                        l = re.sub('group-title="[^"]*"', f'group-title="{cat}"', l)
-                    else:
-                        l = l.replace('#EXTINF:-1', f'#EXTINF:-1 group-title="{cat}"')
-                    canales.append((cat, nombre.lower(), l, url_c))
+todo="#EXTM3U\n"
+for n,u in FUENTES.items():
+    todo+=descargar(u)+"\n"
 
-vistos=set(); unicos=[]
-for cat in ORDEN:
-    for c in sorted([x for x in canales if x[0]==cat], key=lambda x: x[1]):
-        if c[3] not in vistos: vistos.add(c[3]); unicos.append(c)
-
-contenido = "#EXTM3U\n"
-for _,_,inf,url in unicos:
-    contenido += inf + "\n#EXTVLCOPT:network-caching=3000\n" + url + "\n"
+canales=re.findall(r'(#EXTINF.*?)\n(.*?)\n',todo,re.DOTALL)
+vistos=set(); esp="#EXTM3U\n"; inter="#EXTM3U\n"
+for i,l in canales:
+    if l in vistos: continue
+    vistos.add(l)
+    bloque=i+"\n"+l
+    (esp if es_espanol(bloque) else inter)+=bloque+"\n"
 
 requests.patch(f"https://api.github.com/gists/{GIST_ID}",
-    headers={"Authorization": f"token {TOKEN}"},
-    json={"files":{FILENAME:{"content":contenido}}})
+ headers={"Authorization":f"token {TOKEN}"},
+ json={"files":{"mi_lista_españa.m3u8":{"content":esp},"mi_lista_internacional.m3u8":{"content":inter}}})
