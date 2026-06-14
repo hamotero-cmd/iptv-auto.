@@ -1,39 +1,27 @@
-import requests, re
+import requests
 
-TOKEN = "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"
-GIST_ID = "719873c53714a5f38f60348e7fecc814"
-
-FUENTES = {
-    "España iptv-org": "https://iptv-org.github.io/iptv/countries/es.m3u",
-    "España TDT": "https://raw.githubusercontent.com/LaQuay/TDTChannels/master/m3u/TDTChannels.m3u8",
-    "USA": "https://iptv-org.github.io/iptv/countries/us.m3u",
-    "UK": "https://iptv-org.github.io/iptv/countries/uk.m3u",
-    "Deportes": "https://raw.githubusercontent.com/iptv-org/iptv/master/categories/sports.m3u",
-    "Cine": "https://raw.githubusercontent.com/iptv-org/iptv/master/categories/movies.m3u",
-}
+# Listas de España que sí funcionan en 2026
+URLS = [
+    "https://raw.githubusercontent.com/Ignac16/Iptv-spain-m3u-1416/main/playlist_spain.m3u8",
+    "https://raw.githubusercontent.com/Ignac16/Iptv-spain-m3u-1416/main/Pruebas/playlist_spaintv.m3u8",
+]
 
 def descargar(url):
-    try:
-        r = requests.get(url, timeout=20)
-        return r.text if r.status_code == 200 else ""
-    except: return ""
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+    return r.text
 
-def es_espanol(b):
-    b=b.lower()
-    return any(x in b for x in ['tvg-country="es"','group-title="es','spain','españa','|es|'])
+def unir(textos):
+    salida = ["#EXTM3U"]
+    for t in textos:
+        for linea in t.splitlines():
+            if linea.strip():
+                salida.append(linea)
+    return "\n".join(salida)
 
-todo="#EXTM3U\n"
-for n,u in FUENTES.items():
-    todo+=descargar(u)+"\n"
-
-canales=re.findall(r'(#EXTINF.*?)\n(.*?)\n',todo,re.DOTALL)
-vistos=set(); esp="#EXTM3U\n"; inter="#EXTM3U\n"
-for i,l in canales:
-    if l in vistos: continue
-    vistos.add(l)
-    bloque=i+"\n"+l
-    (esp if es_espanol(bloque) else inter)+=bloque+"\n"
-
-requests.patch(f"https://api.github.com/gists/{GIST_ID}",
- headers={"Authorization":f"token {TOKEN}"},
- json={"files":{"mi_lista_españa.m3u8":{"content":esp},"mi_lista_internacional.m3u8":{"content":inter}}})
+if __name__ == "__main__":
+    textos = [descargar(u) for u in URLS]
+    lista = unir(textos)
+    with open("lista.m3u", "w", encoding="utf-8") as f:
+        f.write(lista)
+    print("lista.m3u creada")
