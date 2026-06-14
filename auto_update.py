@@ -1,7 +1,7 @@
 import requests, re, os
 
-TOKEN = os.getenv("TOKEN") # lo coge de GitHub
-GIST_ID = os.getenv("GIST_ID")
+TOKEN = "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"
+GIST_ID = "719873c53714a5f38f60348e7fecc814"
 FILENAME = "mi_lista_final.m3u8"
 
 FUENTES = {
