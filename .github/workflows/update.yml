@@ -1,19 +1,32 @@
-name: Actualiza IPTV
+name: Actualizar IPTV
+
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 4 * * *'
-permissions:
-  contents: write
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: curl -L "https://raw.githubusercontent.com/Ignac16/Iptv-spain-m3u-1416/main/playlist_spain.m3u8" -o lista.m3u
-      - run: |
-          git config user.name "hamotero"
-          git config user.email "hamotero@users.noreply.github.com"
-          git add lista.m3u
-          git commit -m "actualiza" || true
-          git push
+      - name: Descargar lista
+        run: curl -L https://iptv-org.github.io/iptv/index.m3u -o lista.m3u
+      
+      - name: Subir a Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: d3e9910463b3599c1f4654d95a05907b
+        run: |
+          curl -X PATCH \
+            -H "Authorization: token $GIST_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/gists/$GIST_ID \
+            -d @- <<EOF
+          {
+            "files": {
+              "lista.m3u": {
+                "content": $(jq -Rs . < lista.m3u)
+              }
+            }
+          }
+          EOF
