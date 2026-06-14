@@ -1,27 +1,19 @@
 name: Actualiza IPTV
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 4 * * *'
-  workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-      - run: python auto_update.py
+      - run: curl -L "https://raw.githubusercontent.com/Ignac16/Iptv-spain-m3u-1416/main/playlist_spain.m3u8" -o lista.m3u
       - run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "hamotero"
+          git config user.email "hamotero@users.noreply.github.com"
           git add lista.m3u
-          git diff --cached --quiet || git commit -m "update lista"
+          git commit -m "actualiza" || true
           git push
